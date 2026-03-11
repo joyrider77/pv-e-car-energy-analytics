@@ -14,12 +14,12 @@ import { Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TarifPeriode, TarifStufe } from "../backend.d.ts";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const WEEKDAYS = ["MO", "DI", "MI", "DO", "FR", "SA", "SO"] as const;
 const HOURS = Array.from({ length: 24 }, (_, i) => i); // 0–23
 
 const DEFAULT_COLORS = [
@@ -68,6 +68,8 @@ interface GridSectionProps {
 function GridSection({ label, stufen, grid, onCellChange }: GridSectionProps) {
   const paintRef = useRef(false);
   const [activeStufeIdx, setActiveStufeIdx] = useState(0);
+  const { tRaw } = useLanguage();
+  const weekdays = tRaw("tarifeWeekdays") as unknown as string[];
 
   const getColor = useCallback(
     (stufeId: string) => {
@@ -127,7 +129,7 @@ function GridSection({ label, stufen, grid, onCellChange }: GridSectionProps) {
             </tr>
           </thead>
           <tbody>
-            {WEEKDAYS.map((day, wdIdx) => (
+            {weekdays.map((day, wdIdx) => (
               <tr key={day}>
                 <td className="text-[10px] font-mono text-muted-foreground pr-1 text-right w-8">
                   {day}
@@ -183,6 +185,7 @@ function StufenEditor({
   onStufenChange,
   onGridChange,
 }: StufenEditorProps) {
+  const { t } = useLanguage();
   const handlePreisChange = (id: string, preis: number) => {
     onStufenChange(stufen.map((s) => (s.id === id ? { ...s, preis } : s)));
   };
@@ -255,7 +258,7 @@ function StufenEditor({
                 size="sm"
                 onClick={() => handleDeleteStufe(stufe.id)}
                 className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                title="Tarif entfernen"
+                title={t("tarifDialogRemoveTarif")}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </Button>
@@ -274,12 +277,12 @@ function StufenEditor({
         data-ocid="tarif.stufe.button"
       >
         <Plus className="w-3.5 h-3.5 mr-1.5" />
-        TARIF HINZUFÜGEN
+        {t("tarifDialogAddTarif")}
       </Button>
 
       {/* Grid */}
       <GridSection
-        label={`Zuweisung — ${title}`}
+        label={`${t("tarifDialogAssignment")} — ${title}`}
         stufen={stufen}
         grid={grid}
         onCellChange={handleCellChange}
@@ -300,6 +303,7 @@ export default function TarifPeriodeDialog({
 }: Props) {
   const isEdit = !!initial;
   const { currency } = useCurrency();
+  const { t } = useLanguage();
 
   // Form state
   const [von, setVon] = useState("");
@@ -368,10 +372,10 @@ export default function TarifPeriodeDialog({
     const errs: Record<string, string> = {};
     const vonParsed = parseDate(von);
     const bisParsed = parseDate(bis);
-    if (!vonParsed) errs.von = "Ungültiges Datum (DD.MM.YYYY)";
-    if (!bisParsed) errs.bis = "Ungültiges Datum (DD.MM.YYYY)";
+    if (!vonParsed) errs.von = t("tarifDialogErrorDate");
+    if (!bisParsed) errs.bis = t("tarifDialogErrorDate");
     if (vonParsed && bisParsed && vonParsed > bisParsed)
-      errs.bis = "Bis muss nach Von liegen";
+      errs.bis = t("tarifDialogErrorDateOrder");
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -404,7 +408,7 @@ export default function TarifPeriodeDialog({
       >
         <DialogHeader className="px-6 pt-5 pb-3 flex-shrink-0 border-b border-border">
           <DialogTitle className="font-display text-lg text-foreground">
-            Tarifperiode {isEdit ? "bearbeiten" : "erstellen"}
+            {isEdit ? t("tarifDialogTitleEdit") : t("tarifDialogTitleNew")}
           </DialogTitle>
         </DialogHeader>
 
@@ -417,7 +421,7 @@ export default function TarifPeriodeDialog({
                   htmlFor="tarif-von"
                   className="text-xs font-mono text-muted-foreground uppercase tracking-wider"
                 >
-                  Von
+                  {t("tarifDialogVon")}
                 </Label>
                 <Input
                   id="tarif-von"
@@ -441,7 +445,7 @@ export default function TarifPeriodeDialog({
                   htmlFor="tarif-bis"
                   className="text-xs font-mono text-muted-foreground uppercase tracking-wider"
                 >
-                  Bis
+                  {t("tarifDialogBis")}
                 </Label>
                 <Input
                   id="tarif-bis"
@@ -465,7 +469,7 @@ export default function TarifPeriodeDialog({
             {/* Bezugstarif */}
             {bezugStufen.length > 0 && (
               <StufenEditor
-                title="Bezugstarif"
+                title={t("tarifDialogBezug")}
                 stufen={bezugStufen}
                 grid={zuordnungBezug}
                 currency={currency}
@@ -487,7 +491,7 @@ export default function TarifPeriodeDialog({
             {/* Einspeisetarif */}
             {einspeiseStufen.length > 0 && (
               <StufenEditor
-                title="Einspeisetarif"
+                title={t("tarifDialogEinspeisung")}
                 stufen={einspeiseStufen}
                 grid={zuordnungEinspeisung}
                 currency={currency}
@@ -515,7 +519,7 @@ export default function TarifPeriodeDialog({
             data-ocid="tarif.cancel_button"
             className="font-mono border-border text-muted-foreground hover:text-foreground"
           >
-            ABBRECHEN
+            {t("tarifDialogCancel")}
           </Button>
           <Button
             type="button"
@@ -523,7 +527,7 @@ export default function TarifPeriodeDialog({
             data-ocid="tarif.confirm_button"
             className="font-mono bg-primary text-primary-foreground hover:opacity-90"
           >
-            OK
+            {t("tarifDialogSave")}
           </Button>
         </DialogFooter>
       </DialogContent>

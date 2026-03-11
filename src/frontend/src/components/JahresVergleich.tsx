@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import type { TarifPeriode } from "../backend.d.ts";
 import { useCo2 } from "../contexts/Co2Context";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { useActor } from "../hooks/useActor";
 import {
   type PVDataRow,
@@ -53,14 +54,14 @@ const MONTH_NAMES = [
   "Dez",
 ];
 
-const METRIC_OPTIONS = [
-  { value: "gesamtErzeugung", label: "Erzeugung" },
-  { value: "eigenverbrauch", label: "Eigenverbrauch" },
-  { value: "netzbezug", label: "Netzbezug" },
-  { value: "netzeinspeisung", label: "Einspeisung" },
+const METRIC_KEYS = [
+  "gesamtErzeugung",
+  "eigenverbrauch",
+  "netzbezug",
+  "netzeinspeisung",
 ] as const;
 
-type MetricKey = (typeof METRIC_OPTIONS)[number]["value"];
+type MetricKey = (typeof METRIC_KEYS)[number];
 
 const CHART_COLORS = {
   jahr1: "oklch(0.78 0.16 75)",
@@ -137,6 +138,7 @@ function YearSummaryCard({
   colorClass,
   ocid,
 }: YearSummaryCardProps) {
+  const { t } = useLanguage();
   const filtered = useMemo(
     () => filterRowsByYear(pvRows, year),
     [pvRows, year],
@@ -171,7 +173,7 @@ function YearSummaryCard({
         </CardHeader>
         <CardContent>
           <p className="text-xs font-mono text-muted-foreground">
-            Keine Daten für {year}
+            {t("vergleichNoDataYear").replace("{year}", String(year))}
           </p>
         </CardContent>
       </Card>
@@ -193,7 +195,7 @@ function YearSummaryCard({
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
           <div>
             <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-              Erzeugung
+              {t("vergleichProduktion")}
             </p>
             <p className="text-sm font-mono font-medium text-foreground">
               {totals.erzeugung.toFixed(1)}{" "}
@@ -202,7 +204,7 @@ function YearSummaryCard({
           </div>
           <div>
             <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-              Eigenverbrauch
+              {t("vergleichEigenverbrauch")}
             </p>
             <p className="text-sm font-mono font-medium text-foreground">
               {totals.eigenverbrauch.toFixed(1)}{" "}
@@ -211,7 +213,7 @@ function YearSummaryCard({
           </div>
           <div>
             <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-              Autarkiegrad
+              {t("kpiAutarkie")}
             </p>
             <p className="text-sm font-mono font-medium text-foreground">
               {totals.autarky}{" "}
@@ -220,7 +222,7 @@ function YearSummaryCard({
           </div>
           <div>
             <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-              CO₂-Einsparung
+              {t("kpiCo2Savings")}
             </p>
             <p className="text-sm font-mono font-medium text-foreground">
               {totals.co2.toFixed(1)}{" "}
@@ -230,7 +232,7 @@ function YearSummaryCard({
           {revenue !== null && (
             <div>
               <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-                Ertrag
+                {t("vergleichErtrag")}
               </p>
               <p className="text-sm font-mono font-medium text-foreground">
                 {revenue.ertrag.toFixed(2)}{" "}
@@ -260,6 +262,16 @@ export default function JahresVergleich() {
   const [allTarifPerioden, setAllTarifPerioden] = useState<TarifPeriode[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const { t } = useLanguage();
+  const metricOptions = [
+    { value: "gesamtErzeugung" as MetricKey, label: t("vergleichProduktion") },
+    {
+      value: "eigenverbrauch" as MetricKey,
+      label: t("vergleichEigenverbrauch"),
+    },
+    { value: "netzbezug" as MetricKey, label: t("vergleichNetzbezug") },
+    { value: "netzeinspeisung" as MetricKey, label: t("vergleichEinspeisung") },
+  ];
   const [selectedMetric, setSelectedMetric] =
     useState<MetricKey>("gesamtErzeugung");
   const [selectedJahr1, setSelectedJahr1] = useState<string>("");
@@ -363,7 +375,7 @@ export default function JahresVergleich() {
   ]);
 
   const metricLabel =
-    METRIC_OPTIONS.find((o) => o.value === selectedMetric)?.label ?? "kWh";
+    metricOptions.find((o) => o.value === selectedMetric)?.label ?? "kWh";
 
   // ---------------------------------------------------------------------------
   // Loading skeleton
@@ -395,10 +407,10 @@ export default function JahresVergleich() {
         className="flex flex-col items-center justify-center py-24 gap-4 text-center"
       >
         <p className="text-lg font-display font-semibold text-foreground">
-          Keine PV-Daten vorhanden
+          {t("vergleichNoData")}
         </p>
         <p className="text-sm font-mono text-muted-foreground max-w-sm">
-          Lade PV-CSV-Daten hoch, um den Jahresvergleich zu nutzen.
+          {t("vergleichNoDataHint")}
         </p>
       </div>
     );
@@ -422,7 +434,8 @@ export default function JahresVergleich() {
               data-ocid="jahresvergleich.jahr1.select"
               className="h-9 w-28 bg-secondary border-border font-mono text-sm"
             >
-              <SelectValue placeholder="Jahr 1" />
+              {/* @ts-ignore */}
+              <SelectValue placeholder={t("vergleichYear1")} />
             </SelectTrigger>
             <SelectContent>
               {availableYears.map((y) => (
@@ -445,7 +458,8 @@ export default function JahresVergleich() {
               data-ocid="jahresvergleich.jahr2.select"
               className="h-9 w-28 bg-secondary border-border font-mono text-sm"
             >
-              <SelectValue placeholder="Jahr 2" />
+              {/* @ts-ignore */}
+              <SelectValue placeholder={t("vergleichYear2")} />
             </SelectTrigger>
             <SelectContent>
               {availableYears.map((y) => (
@@ -469,7 +483,7 @@ export default function JahresVergleich() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {METRIC_OPTIONS.map((opt) => (
+            {metricOptions.map((opt) => (
               <SelectItem
                 key={opt.value}
                 value={opt.value}
@@ -488,10 +502,10 @@ export default function JahresVergleich() {
         className="bg-card border border-border rounded-lg p-4"
       >
         <h3 className="text-sm font-mono font-medium text-foreground mb-1">
-          {metricLabel} — Monatsvergleich
+          {metricLabel} — {t("vergleichMonthlyComparison")}
         </h3>
         <p className="text-xs font-mono text-muted-foreground mb-4">
-          {selectedJahr1} vs. {selectedJahr2} — Werte in kWh
+          {selectedJahr1} vs. {selectedJahr2} — {t("vergleichValuesInKwh")}
         </p>
 
         <ResponsiveContainer width="100%" height={280}>

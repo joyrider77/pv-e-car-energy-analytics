@@ -438,3 +438,233 @@ function getYear(datum: string): string {
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+// ---------------------------------------------------------------------------
+// Premium CSV Support
+// ---------------------------------------------------------------------------
+
+/**
+ * Full 17-column Premium CSV structure (semicolon-separated, 5-min intervals):
+ * Col  0: Datum und Uhrzeit              [dd.MM.yyyy HH:mm]
+ * Col  1: Direkt verbraucht              [Wh]
+ * Col  2: Energie aus Batterie bezogen   [Wh]
+ * Col  3: Energie in Batterie gespeichert[Wh]
+ * Col  4: Energie ins Netz eingespeist   [Wh]
+ * Col  5: Energie vom Netz bezogen       [Wh]
+ * Col  6: PV Produktion                  [Wh]
+ * Col  7: Verbrauch                      [Wh]
+ * Col  8: Energie vom Netz an Wattpilot  [Wh]
+ * Col  9: Energie von Batterie an Wattpilot [Wh]
+ * Col 10: Energie von PV an Wattpilot    [Wh]
+ * Col 11: State of Charge                [%]
+ * Col 12: Energie Wattpilot | <name>     [Wh]  (e.g. "Wattpilot Ebnetstrasse 16")
+ * Col 13: Energie ins Netz eingespeist | PowerMeter [Wh]
+ * Col 14: Energie vom Netz bezogen | PowerMeter     [Wh]
+ * Col 15: Produktion | METER_CAT_OTHER   [Wh]
+ * Col 16: Verbrauch | METER_CAT_OTHER    [Wh]
+ */
+export interface PremiumDataRow {
+  timestamp: string; // "DD.MM.YYYY HH:mm" - the full original timestamp
+  datum: string; // "DD.MM.YYYY" - date part only
+  hour: number; // 0-23 - extracted from timestamp
+  direktVerbraucht: number; // kWh (from Wh)
+  energieBatterieBezogen: number; // kWh
+  energieBatterieGespeichert: number; // kWh
+  netzeinspeisung: number; // kWh (Energie ins Netz eingespeist)
+  netzbezug: number; // kWh (Energie vom Netz bezogen)
+  pvProduktion: number; // kWh (PV Produktion)
+  verbrauch: number; // kWh (Verbrauch)
+  energieNetzWattpilot: number; // kWh
+  energieBatterieWattpilot: number; // kWh
+  energiePVWattpilot: number; // kWh
+  stateOfCharge: number; // % (NOT converted)
+  // Columns 12-16 (additional meter data)
+  energieWattpilotGesamt: number; // kWh  col 12
+  netzeinspeisungPowerMeter: number; // kWh  col 13
+  netzbezugPowerMeter: number; // kWh  col 14
+  produktionMeterOther: number; // kWh  col 15
+  verbrauchMeterOther: number; // kWh  col 16
+}
+
+export function parsePremiumCSV(csvText: string): PremiumDataRow[] {
+  const lines = csvText
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim()
+    .split("\n");
+
+  // Skip header (row 0) and unit row (row 1 if it starts with "[")
+  let dataStartIndex = 1;
+  if (lines[1]?.trim().startsWith("[")) {
+    dataStartIndex = 2;
+  }
+
+  const dataLines = lines
+    .slice(dataStartIndex)
+    .filter((l) => l.trim().length > 0);
+
+  const parseWh = (val: string | undefined): number => {
+    if (!val) return 0;
+    const cleaned = val.trim().replace(/\s/g, "");
+    if (!cleaned) return 0;
+    let normalised: string;
+    if (cleaned.includes(",") && cleaned.includes(".")) {
+      normalised = cleaned.replace(/\./g, "").replace(",", ".");
+    } else if (cleaned.includes(",")) {
+      normalised = cleaned.replace(",", ".");
+    } else {
+      normalised = cleaned;
+    }
+    // Convert Wh to kWh
+    return (Number.parseFloat(normalised) || 0) / 1000;
+  };
+
+  const parsePercent = (val: string | undefined): number => {
+    if (!val) return 0;
+    const cleaned = val.trim().replace(/\s/g, "");
+    if (!cleaned) return 0;
+    const normalised = cleaned.includes(",")
+      ? cleaned.replace(",", ".")
+      : cleaned;
+    return Number.parseFloat(normalised) || 0;
+  };
+
+  return dataLines.map((line) => {
+    const parts = line.split(";");
+    // Timestamp format: "DD.MM.YYYY HH:mm"
+    const ts = parts[0]?.trim() ?? "";
+    const spaceIdx = ts.indexOf(" ");
+    const datum = spaceIdx > 0 ? ts.slice(0, spaceIdx) : ts;
+    const timePart = spaceIdx > 0 ? ts.slice(spaceIdx + 1) : "";
+    const hour = timePart
+      ? Number.parseInt(timePart.split(":")[0] ?? "0", 10)
+      : 0;
+
+    return {
+      timestamp: ts,
+      datum,
+      hour: Number.isNaN(hour) ? 0 : hour,
+      // Columns 1-11
+      direktVerbraucht: parseWh(parts[1]),
+      energieBatterieBezogen: parseWh(parts[2]),
+      energieBatterieGespeichert: parseWh(parts[3]),
+      netzeinspeisung: parseWh(parts[4]),
+      netzbezug: parseWh(parts[5]),
+      pvProduktion: parseWh(parts[6]),
+      verbrauch: parseWh(parts[7]),
+      energieNetzWattpilot: parseWh(parts[8]),
+      energieBatterieWattpilot: parseWh(parts[9]),
+      energiePVWattpilot: parseWh(parts[10]),
+      stateOfCharge: parsePercent(parts[11]),
+      // Columns 12-16
+      energieWattpilotGesamt: parseWh(parts[12]),
+      netzeinspeisungPowerMeter: parseWh(parts[13]),
+      netzbezugPowerMeter: parseWh(parts[14]),
+      produktionMeterOther: parseWh(parts[15]),
+      verbrauchMeterOther: parseWh(parts[16]),
+    };
+  });
+}
+
+/** Convert premium rows to PVDataRow[] by aggregating 5-min intervals per day */
+export function premiumToPVRows(rows: PremiumDataRow[]): PVDataRow[] {
+  const byDay = new Map<string, PVDataRow>();
+  for (const row of rows) {
+    const existing = byDay.get(row.datum);
+    if (existing) {
+      existing.gesamtErzeugung += row.pvProduktion;
+      existing.gesamtVerbrauch += row.verbrauch;
+      existing.eigenverbrauch += row.direktVerbraucht;
+      existing.netzeinspeisung += row.netzeinspeisung;
+      existing.netzbezug += row.netzbezug;
+    } else {
+      byDay.set(row.datum, {
+        datum: row.datum,
+        gesamtErzeugung: row.pvProduktion,
+        gesamtVerbrauch: row.verbrauch,
+        eigenverbrauch: row.direktVerbraucht,
+        netzeinspeisung: row.netzeinspeisung,
+        netzbezug: row.netzbezug,
+      });
+    }
+  }
+  return Array.from(byDay.values());
+}
+
+/** Convert premium rows to WattpilotDataRow[] by aggregating per day */
+export function premiumToWattpilotRows(
+  rows: PremiumDataRow[],
+): WattpilotDataRow[] {
+  const byDay = new Map<string, WattpilotDataRow>();
+  for (const row of rows) {
+    const existing = byDay.get(row.datum);
+    if (existing) {
+      existing.energiePV += row.energiePVWattpilot;
+      existing.energieNetz += row.energieNetzWattpilot;
+      existing.energieBatterie += row.energieBatterieWattpilot;
+    } else {
+      byDay.set(row.datum, {
+        datum: row.datum,
+        energiePV: row.energiePVWattpilot,
+        energieNetz: row.energieNetzWattpilot,
+        energieBatterie: row.energieBatterieWattpilot,
+      });
+    }
+  }
+  return Array.from(byDay.values());
+}
+
+export function filterPremiumByDay(
+  rows: PremiumDataRow[],
+  day: string,
+): PremiumDataRow[] {
+  // day is YYYY-MM-DD, rows have datum as "DD.MM.YYYY"
+  const parts = day.split("-");
+  const target = `${parts[2]}.${parts[1]}.${parts[0]}`;
+  return rows.filter((r) => r.datum === target);
+}
+
+export function filterPremiumByMonth(
+  rows: PremiumDataRow[],
+  ym: string,
+): PremiumDataRow[] {
+  // ym is YYYY-MM
+  const parts = ym.split("-");
+  const suffix = `.${parts[1]}.${parts[0]}`;
+  return rows.filter((r) => r.datum.endsWith(suffix));
+}
+
+export function filterPremiumByYear(
+  rows: PremiumDataRow[],
+  year: string,
+): PremiumDataRow[] {
+  const suffix = `.${year}`;
+  return rows.filter((r) => r.datum.endsWith(suffix));
+}
+
+export function getAvailableDaysPremium(rows: PremiumDataRow[]): string[] {
+  const days = new Set<string>();
+  for (const row of rows) {
+    const nd = normaliseDatum(row.datum);
+    if (nd) days.add(nd);
+  }
+  return Array.from(days).sort();
+}
+
+export function getAvailableMonthsPremium(rows: PremiumDataRow[]): string[] {
+  const months = new Set<string>();
+  for (const row of rows) {
+    const ym = getYearMonth(row.datum);
+    if (ym) months.add(ym);
+  }
+  return Array.from(months).sort();
+}
+
+export function getAvailableYearsPremium(rows: PremiumDataRow[]): string[] {
+  const years = new Set<string>();
+  for (const row of rows) {
+    const y = getYear(row.datum);
+    if (y) years.add(y);
+  }
+  return Array.from(years).sort();
+}

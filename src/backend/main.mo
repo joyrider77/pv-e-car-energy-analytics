@@ -69,6 +69,28 @@ actor {
     };
   };
 
+  module PremiumSession {
+    public type ID = Text;
+
+    public type PremiumSession = {
+      id : Text;
+      name : Text;
+      timestamp : Time.Time;
+      data : Text;
+      owner : Principal;
+    };
+
+    public module ID {
+      public func toText(id : ID) : Text {
+        id;
+      };
+
+      public func compare(id1 : ID, id2 : ID) : Order.Order {
+        Text.compare(id1, id2);
+      };
+    };
+  };
+
   module AnalyticsResult {
     public type ID = Text;
 
@@ -117,6 +139,7 @@ actor {
   stable var users = Map.empty<Principal, UserProfile>();
   stable var pvSessions = Map.empty<PVSession.ID, PVSession.PVSession>();
   stable var wattpilotSessions = Map.empty<WattpilotSession.ID, WattpilotSession.WattpilotSession>();
+  stable var premiumSessions = Map.empty<PremiumSession.ID, PremiumSession.PremiumSession>();
   stable var analyticsResults = Map.empty<AnalyticsResult.ID, AnalyticsResult.AnalyticsResult>();
   stable var tarifPerioden = Map.empty<Text, TarifPeriode>();
 
@@ -255,6 +278,47 @@ actor {
     ).toArray();
   };
 
+  // Premium Session management
+  public shared ({ caller }) func addPremiumSession(id : Text, name : Text, data : Text) : async () {
+    checkUserRegistered(caller);
+    let session : PremiumSession.PremiumSession = {
+      id;
+      name;
+      timestamp = Time.now();
+      data;
+      owner = caller;
+    };
+    premiumSessions.add(id, session);
+  };
+
+  // Append additional data chunk to an existing premium session
+  public shared ({ caller }) func appendPremiumSessionData(id : Text, chunk : Text) : async () {
+    checkUserRegistered(caller);
+    switch (premiumSessions.get(id)) {
+      case (null) { Runtime.trap("Session not found") };
+      case (?session) {
+        if (session.owner != caller) {
+          Runtime.trap("Access denied: You can only modify your own sessions");
+        };
+        let updated : PremiumSession.PremiumSession = {
+          session with data = session.data # chunk;
+        };
+        premiumSessions.add(id, updated);
+      };
+    };
+  };
+
+  public query ({ caller }) func getPremiumSessions() : async [PremiumSession.PremiumSession] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can view sessions");
+    };
+    premiumSessions.values().filter(
+      func(session) {
+        session.owner == caller;
+      }
+    ).toArray();
+  };
+
   // Generic session access
   public query ({ caller }) func getSession(id : Text, sessionType : Text) : async Text {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
@@ -274,6 +338,17 @@ actor {
       };
       case ("wattpilot") {
         switch (wattpilotSessions.get(id)) {
+          case (null) { Runtime.trap("Session not found") };
+          case (?session) {
+            if (session.owner != caller) {
+              Runtime.trap("Access denied: You can only view your own sessions");
+            };
+            session.data;
+          };
+        };
+      };
+      case ("premium") {
+        switch (premiumSessions.get(id)) {
           case (null) { Runtime.trap("Session not found") };
           case (?session) {
             if (session.owner != caller) {
@@ -311,6 +386,17 @@ actor {
               Runtime.trap("Access denied: You can only delete your own sessions");
             };
             wattpilotSessions.remove(id);
+          };
+        };
+      };
+      case ("premium") {
+        switch (premiumSessions.get(id)) {
+          case (null) { Runtime.trap("Session not found") };
+          case (?session) {
+            if (session.owner != caller) {
+              Runtime.trap("Access denied: You can only delete your own sessions");
+            };
+            premiumSessions.remove(id);
           };
         };
       };

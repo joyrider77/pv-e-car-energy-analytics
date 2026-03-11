@@ -56,6 +56,13 @@ export const PVSession = IDL.Record({
   'name' : IDL.Text,
   'timestamp' : Time,
 });
+export const PremiumSession = IDL.Record({
+  'id' : IDL.Text,
+  'owner' : IDL.Principal,
+  'data' : IDL.Text,
+  'name' : IDL.Text,
+  'timestamp' : Time,
+});
 export const WattpilotSession = IDL.Record({
   'id' : IDL.Text,
   'owner' : IDL.Principal,
@@ -67,8 +74,10 @@ export const WattpilotSession = IDL.Record({
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addPVSession' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
+  'addPremiumSession' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
   'addTarifPeriode' : IDL.Func([TarifPeriode], [], []),
   'addWattpilotSession' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
+  'appendPremiumSessionData' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'deleteSession' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'deleteTarifPeriode' : IDL.Func([IDL.Text], [], []),
@@ -83,6 +92,7 @@ export const idlService = IDL.Service({
   'getMyProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getPVSampleData' : IDL.Func([], [IDL.Text], ['query']),
   'getPVSessions' : IDL.Func([], [IDL.Vec(PVSession)], ['query']),
+  'getPremiumSessions' : IDL.Func([], [IDL.Vec(PremiumSession)], ['query']),
   'getSession' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], ['query']),
   'getTarifPerioden' : IDL.Func([], [IDL.Vec(TarifPeriode)], ['query']),
   'getUserProfile' : IDL.Func(
@@ -153,6 +163,13 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'timestamp' : Time,
   });
+  const PremiumSession = IDL.Record({
+    'id' : IDL.Text,
+    'owner' : IDL.Principal,
+    'data' : IDL.Text,
+    'name' : IDL.Text,
+    'timestamp' : Time,
+  });
   const WattpilotSession = IDL.Record({
     'id' : IDL.Text,
     'owner' : IDL.Principal,
@@ -164,8 +181,10 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addPVSession' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
+    'addPremiumSession' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
     'addTarifPeriode' : IDL.Func([TarifPeriode], [], []),
     'addWattpilotSession' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
+    'appendPremiumSessionData' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'deleteSession' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'deleteTarifPeriode' : IDL.Func([IDL.Text], [], []),
@@ -180,6 +199,7 @@ export const idlFactory = ({ IDL }) => {
     'getMyProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getPVSampleData' : IDL.Func([], [IDL.Text], ['query']),
     'getPVSessions' : IDL.Func([], [IDL.Vec(PVSession)], ['query']),
+    'getPremiumSessions' : IDL.Func([], [IDL.Vec(PremiumSession)], ['query']),
     'getSession' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], ['query']),
     'getTarifPerioden' : IDL.Func([], [IDL.Vec(TarifPeriode)], ['query']),
     'getUserProfile' : IDL.Func(

@@ -29,6 +29,13 @@ export interface PVSession {
   'name' : string,
   'timestamp' : Time,
 }
+export interface PremiumSession {
+  'id' : string,
+  'owner' : Principal,
+  'data' : string,
+  'name' : string,
+  'timestamp' : Time,
+}
 export interface TarifPeriode {
   'id' : string,
   'bis' : string,
@@ -66,8 +73,10 @@ export interface WattpilotSession {
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addPVSession' : ActorMethod<[string, string, string], undefined>,
+  'addPremiumSession' : ActorMethod<[string, string, string], undefined>,
   'addTarifPeriode' : ActorMethod<[TarifPeriode], undefined>,
   'addWattpilotSession' : ActorMethod<[string, string, string], undefined>,
+  'appendPremiumSessionData' : ActorMethod<[string, string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'deleteSession' : ActorMethod<[string, string], undefined>,
   'deleteTarifPeriode' : ActorMethod<[string], undefined>,
@@ -78,6 +87,7 @@ export interface _SERVICE {
   'getMyProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getPVSampleData' : ActorMethod<[], string>,
   'getPVSessions' : ActorMethod<[], Array<PVSession>>,
+  'getPremiumSessions' : ActorMethod<[], Array<PremiumSession>>,
   'getSession' : ActorMethod<[string, string], string>,
   'getTarifPerioden' : ActorMethod<[], Array<TarifPeriode>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,

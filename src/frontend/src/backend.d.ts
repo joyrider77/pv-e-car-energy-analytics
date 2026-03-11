@@ -14,6 +14,20 @@ export interface PVSession {
     name: string;
     timestamp: Time;
 }
+export interface WattpilotSession {
+    id: string;
+    owner: Principal;
+    data: string;
+    name: string;
+    timestamp: Time;
+}
+export interface PremiumSession {
+    id: string;
+    owner: Principal;
+    data: string;
+    name: string;
+    timestamp: Time;
+}
 export type Time = bigint;
 export interface TarifStufe {
     id: string;
@@ -43,13 +57,6 @@ export interface TarifPeriode {
     bezugStufen: Array<TarifStufe>;
     zuordnungEinspeisung: Array<Array<string>>;
 }
-export interface WattpilotSession {
-    id: string;
-    owner: Principal;
-    data: string;
-    name: string;
-    timestamp: Time;
-}
 export interface UserProfile {
     principal: Principal;
     co2Faktor: number;
@@ -66,6 +73,8 @@ export interface backendInterface {
     addPVSession(id: string, name: string, data: string): Promise<void>;
     addTarifPeriode(periode: TarifPeriode): Promise<void>;
     addWattpilotSession(id: string, name: string, data: string): Promise<void>;
+    addPremiumSession(id: string, name: string, data: string): Promise<void>;
+    appendPremiumSessionData(id: string, chunk: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     deleteSession(id: string, sessionType: string): Promise<void>;
     deleteTarifPeriode(id: string): Promise<void>;
@@ -76,6 +85,7 @@ export interface backendInterface {
     getMyProfile(): Promise<UserProfile | null>;
     getPVSampleData(): Promise<string>;
     getPVSessions(): Promise<Array<PVSession>>;
+    getPremiumSessions(): Promise<Array<PremiumSession>>;
     getSession(id: string, sessionType: string): Promise<string>;
     getTarifPerioden(): Promise<Array<TarifPeriode>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;

@@ -132,6 +132,13 @@ export interface WattpilotSession {
     name: string;
     timestamp: Time;
 }
+export interface PremiumSession {
+    id: string;
+    owner: Principal;
+    data: string;
+    name: string;
+    timestamp: Time;
+}
 export interface UserProfile {
     principal: Principal;
     co2Faktor: number;
@@ -149,6 +156,8 @@ export interface backendInterface {
     addPVSession(id: string, name: string, data: string): Promise<void>;
     addTarifPeriode(periode: TarifPeriode): Promise<void>;
     addWattpilotSession(id: string, name: string, data: string): Promise<void>;
+    addPremiumSession(id: string, name: string, data: string): Promise<void>;
+    appendPremiumSessionData(id: string, chunk: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     deleteSession(id: string, sessionType: string): Promise<void>;
     deleteTarifPeriode(id: string): Promise<void>;
@@ -159,6 +168,7 @@ export interface backendInterface {
     getMyProfile(): Promise<UserProfile | null>;
     getPVSampleData(): Promise<string>;
     getPVSessions(): Promise<Array<PVSession>>;
+    getPremiumSessions(): Promise<Array<PremiumSession>>;
     getSession(id: string, sessionType: string): Promise<string>;
     getTarifPerioden(): Promise<Array<TarifPeriode>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
@@ -229,6 +239,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.addWattpilotSession(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async addPremiumSession(arg0: string, arg1: string, arg2: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addPremiumSession(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addPremiumSession(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async appendPremiumSessionData(arg0: string, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.appendPremiumSessionData(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.appendPremiumSessionData(arg0, arg1);
             return result;
         }
     }
@@ -369,6 +407,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getPVSessions();
+            return result;
+        }
+    }
+    async getPremiumSessions(): Promise<Array<PremiumSession>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPremiumSessions();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPremiumSessions();
             return result;
         }
     }

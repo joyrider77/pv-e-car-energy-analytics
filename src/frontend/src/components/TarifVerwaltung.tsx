@@ -17,6 +17,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { TarifPeriode } from "../backend.d.ts";
+import { useCurrency } from "../contexts/CurrencyContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { useActor } from "../hooks/useActor";
 import TarifPeriodeDialog from "./TarifPeriodeDialog";
 
@@ -45,6 +47,8 @@ export default function TarifVerwaltung() {
   );
   const [deleteTarget, setDeleteTarget] = useState<TarifPeriode | null>(null);
   const [saving, setSaving] = useState(false);
+  const { t } = useLanguage();
+  const { currency } = useCurrency();
 
   // ---------------------------------------------------------------------------
   // Load tariff periods
@@ -154,7 +158,7 @@ export default function TarifVerwaltung() {
         <div className="flex items-center gap-2">
           <div className="w-1 h-4 rounded-full bg-primary" />
           <h2 className="text-sm font-mono font-semibold text-muted-foreground uppercase tracking-wider">
-            Tarifperioden
+            {t("tarifeSubtitle")}
           </h2>
         </div>
         <Button
@@ -163,7 +167,7 @@ export default function TarifVerwaltung() {
           className="bg-primary text-primary-foreground hover:opacity-90 font-mono text-sm h-9 shadow-glow"
         >
           <Plus className="w-4 h-4 mr-1.5" />
-          Neue Tarifperiode
+          {t("tarifeAdd")}
         </Button>
       </div>
 
@@ -182,10 +186,10 @@ export default function TarifVerwaltung() {
             </div>
             <div className="text-center max-w-sm">
               <h3 className="font-display text-lg font-semibold text-foreground mb-1">
-                Keine Tarifperioden erfasst
+                {t("tarifeEmpty")}
               </h3>
               <p className="text-sm text-muted-foreground font-mono leading-relaxed">
-                Klicke auf &lsquo;Neue Tarifperiode&rsquo; um zu beginnen.
+                {t("tarifeEmptyHint")}
               </p>
             </div>
             <Button
@@ -194,7 +198,7 @@ export default function TarifVerwaltung() {
               className="bg-primary text-primary-foreground hover:opacity-90 font-mono shadow-glow"
             >
               <Plus className="w-4 h-4 mr-1.5" />
-              Neue Tarifperiode
+              {t("tarifeAdd")}
             </Button>
           </motion.div>
         </AnimatePresence>
@@ -227,7 +231,7 @@ export default function TarifVerwaltung() {
                         onClick={() => openEditDialog(periode)}
                         data-ocid={`tarife.edit_button.${idx + 1}`}
                         className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                        title="Bearbeiten"
+                        title={t("edit")}
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -237,7 +241,7 @@ export default function TarifVerwaltung() {
                         onClick={() => setDeleteTarget(periode)}
                         data-ocid={`tarife.delete_button.${idx + 1}`}
                         className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                        title="Löschen"
+                        title={t("delete")}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -263,14 +267,16 @@ export default function TarifVerwaltung() {
                                 key={stufe.id}
                                 className="w-3 h-3 rounded-sm border border-border/50"
                                 style={{ backgroundColor: stufe.farbe }}
-                                title={`CHF ${stufe.preis.toFixed(4)}/kWh`}
+                                title={`${currency} ${stufe.preis.toFixed(4)}/kWh`}
                               />
                             ))}
                           </div>
                           <span>
                             {bzStufen
                               .slice(0, 2)
-                              .map((s) => `${s.preis.toFixed(4)} CHF/kWh`)
+                              .map(
+                                (s) => `${s.preis.toFixed(4)} ${currency}/kWh`,
+                              )
                               .join(" / ")}
                             {bzStufen.length > 2 ? " …" : ""}
                           </span>
@@ -295,14 +301,16 @@ export default function TarifVerwaltung() {
                                 key={stufe.id}
                                 className="w-3 h-3 rounded-sm border border-border/50"
                                 style={{ backgroundColor: stufe.farbe }}
-                                title={`CHF ${stufe.preis.toFixed(4)}/kWh`}
+                                title={`${currency} ${stufe.preis.toFixed(4)}/kWh`}
                               />
                             ))}
                           </div>
                           <span>
                             {einStufen
                               .slice(0, 2)
-                              .map((s) => `${s.preis.toFixed(4)} CHF/kWh`)
+                              .map(
+                                (s) => `${s.preis.toFixed(4)} ${currency}/kWh`,
+                              )
                               .join(" / ")}
                             {einStufen.length > 2 ? " …" : ""}
                           </span>
@@ -339,14 +347,15 @@ export default function TarifVerwaltung() {
         >
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display text-foreground">
-              Tarifperiode löschen?
+              {t("tarifeDeleteConfirm")}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
-              Die Periode{" "}
               {deleteTarget
-                ? `${formatDisplayDate(deleteTarget.von)} – ${formatDisplayDate(deleteTarget.bis)}`
-                : ""}{" "}
-              wird unwiderruflich gelöscht.
+                ? t("tarifeDeleteDescription").replace(
+                    "{period}",
+                    `${formatDisplayDate(deleteTarget.von)} – ${formatDisplayDate(deleteTarget.bis)}`,
+                  )
+                : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -355,7 +364,7 @@ export default function TarifVerwaltung() {
               className="font-mono border-border text-muted-foreground"
               onClick={() => setDeleteTarget(null)}
             >
-              Abbrechen
+              {t("cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               data-ocid="tarife.confirm_button"
@@ -363,7 +372,7 @@ export default function TarifVerwaltung() {
               className="font-mono bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={saving}
             >
-              Löschen
+              {t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
